@@ -1,90 +1,156 @@
-def find_equation(ring):
-    """Ищет уравнение A + B = C в числовом кольце."""
-    n = len(ring)
-    if n < 3 or n > 1000:
+class Node:
+    """Узел двусвязного списка"""
+
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+        self.prev = None
+
+
+class CyclicDoublyLinkedList:
+    """Циклический двусвязный список"""
+
+    def __init__(self, digits):
+        self.head = None
+        self.length = 0
+        self._build_list(digits)
+
+    def _build_list(self, digits):
+        """Построение списка из строки цифр"""
+        if not digits.isdigit():
+            raise ValueError("Input must contain only digits")
+
+        for digit in digits:
+            new_node = Node(int(digit))
+            self.length += 1
+
+            if not self.head:
+                self.head = new_node
+                new_node.next = new_node
+                new_node.prev = new_node
+            else:
+                tail = self.head.prev
+                tail.next = new_node
+                new_node.prev = tail
+                new_node.next = self.head
+                self.head.prev = new_node
+
+    def get_number(self, start_pos, length):
+        """Извлечение числа заданной длины начиная с позиции"""
+        if length <= 0 or start_pos >= self.length:
+            return None
+
+        current = self.head
+        # Переходим к начальной позиции
+        for _ in range(start_pos):
+            current = current.next
+
+        digits = []
+        zero_flag = True  # Флаг для проверки ведущих нулей
+
+        for _ in range(length):
+            digit = current.value
+            if zero_flag:
+                if digit == 0 and length > 1:
+                    return None  # Число с ведущим нулем
+                zero_flag = False
+            digits.append(str(digit))
+            current = current.next
+
+        return int(''.join(digits)) if digits else None
+
+
+class RingEquationSolver:
+    """Решатель уравнения A+B=C в числовом кольце"""
+
+    def __init__(self, ring):
+        self.ring = ring
+        self.n = ring.length
+
+    def find_equation(self):
+        """Ищет уравнение A + B = C в числовом кольце.
+
+        Возвращает:
+            str: уравнение в формате 'A+B=C', если найдено
+            str: 'No' — иначе
+        """
+        if self.n < 3:
+            return "No"
+
+        for a_len in range(1, self.n - 1):
+            for b_len in range(1, self.n - a_len):
+                c_len = self.n - a_len - b_len
+                if c_len < 1:
+                    continue
+
+                for start_pos in range(self.n):
+                    a = self.ring.get_number(start_pos, a_len)
+                    b = self.ring.get_number((start_pos + a_len) % self.n, b_len)
+                    c = self.ring.get_number((start_pos + a_len + b_len) % self.n, c_len)
+
+                    if a is not None and b is not None and c is not None:
+                        if a + b == c:
+                            return self._format_result(start_pos, a_len, b_len, c_len)
         return "No"
 
-    # Функция для извлечения числа с учётом циклического перехода
-    def extract_number(start, length):
-        number = []
-        for i in range(length):
-            pos = (start + i) % n
-            number.append(ring[pos])
-        num_str = ''.join(number)
-        if len(num_str) > 1 and num_str[0] == '0':
-            return None
-        return int(num_str) if num_str else None
+    def _format_result(self, start_pos, a_len, b_len, c_len):
+        """Форматирование результата в строку"""
 
-    # Перебираем все возможные комбинации A, B, C
-    for a_len in range(1, n - 1):
-        for b_len in range(1, n - a_len):
-            c_len = n - a_len - b_len
-            if c_len < 1:
-                continue
+        def get_digits(pos, length):
+            digits = []
+            current = self.ring.head
+            for _ in range(pos):
+                current = current.next
+            for _ in range(length):
+                digits.append(str(current.value))
+                current = current.next
+            return ''.join(digits)
 
-            for start in range(n):
-                a = extract_number(start, a_len)
-                b = extract_number((start + a_len) % n, b_len)
-                c = extract_number((start + a_len + b_len) % n, c_len)
+        a_str = get_digits(start_pos, a_len)
+        b_str = get_digits((start_pos + a_len) % self.n, b_len)
+        c_str = get_digits((start_pos + a_len + b_len) % self.n, c_len)
 
-                if a is not None and b is not None and c is not None:
-                    if a + b == c:
-                        # Формируем строки чисел
-                        a_str = ''.join(ring[(start + i) % n] for i in range(a_len))
-                        b_str = ''.join(ring[(start + a_len + i) % n] for i in range(b_len))
-                        c_str = ''.join(ring[(start + a_len + b_len + i) % n] for i in range(c_len))
-                        return f"{a_str}+{b_str}={c_str}"
-
-    return "No"
+        return f"{a_str}+{b_str}={c_str}"
 
 
 def main():
-    """Основная функция: чтение из файла/ввод вручную и запись в файл."""
-    import sys
-    input_source = None
-    ring = ""
-
-    # Выбор источника данных
+    """Основная функция программы"""
+    print("Числовое кольцо - поиск A+B=C")
     print("Выберите источник данных:")
-    print("1 - Ввод вручную")
-    print("2 - Чтение из файла input.txt")
-    choice = input("Ваш выбор (1/2): ").strip()
+    print("1. Ввод вручную")
+    print("2. Чтение из файла input.txt")
 
-    # Получение данных
-    if choice == "1":
-        ring = input("Введите строку цифр: ").strip()
-        if not ring.isdigit():
-            print("Ошибка: в строке должны быть только цифры!", file=sys.stderr)
+    choice = input("Ваш выбор (1/2): ").strip()
+    input_data = ""
+
+    try:
+        if choice == "1":
+            input_data = input("Введите строку цифр: ").strip()
+        elif choice == "2":
+            with open("input.txt", "r") as file:
+                input_data = file.read().strip()
+        else:
+            print("Неверный выбор!")
             return
-    elif choice == "2":
-        try:
-            with open("input.txt", "r") as f:
-                ring = f.read().strip()
-            if not ring.isdigit():
-                print("Ошибка: файл должен содержать только цифры!", file=sys.stderr)
-                return
-        except FileNotFoundError:
-            print("Ошибка: файл input.txt не найден!", file=sys.stderr)
-            return
-    else:
-        print("Ошибка: неверный выбор!", file=sys.stderr)
+    except Exception as e:
+        print(f"Ошибка: {e}")
         return
 
-    # Проверка на длину строки
-    if len(ring) > 100:
-        print("Предупреждение: длинная строка может замедлить выполнение программы.")
-        confirm = input("Продолжить? (y/n): ").strip().lower()
-        if confirm != 'y':
-            return
+    if not input_data.isdigit():
+        print("Ошибка: ввод должен содержать только цифры!")
+        return
 
-    # Поиск решения
-    result = find_equation(ring)
+    try:
+        ring = CyclicDoublyLinkedList(input_data)
+        solver = RingEquationSolver(ring)
+        result = solver.find_equation()
 
-    # Запись результата в файл
-    with open("output.txt", "w") as f:
-        f.write(result)
+        with open("output.txt", "w") as file:
+            file.write(result)
 
-    print(f"Результат записан в output.txt: {result}")
+        print(f"Результат записан в output.txt: {result}")
+    except Exception as e:
+        print(f"Ошибка при обработке данных: {e}")
 
 
 if __name__ == "__main__":
